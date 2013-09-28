@@ -1,4 +1,3 @@
-ngx-shared-env
-==============
+Still in preliminary development stage. Documentation to come.
 
-nginx module for shared hosting environment
+This module will change regularly and is not yet suitable for production use.
