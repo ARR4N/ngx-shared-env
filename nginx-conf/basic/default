@@ -43,14 +43,11 @@ server {
 	root "${root}/_public";
 
 # see location / for the use of $handler
-	set $handler "404";
+	set_shared_env_handler $handler "${owner}/${dir}" "central_index" "apache";
+
 	location @404 {
 		return 404;
 	}
-	
-	set_shared_env_handler $handler "${owner}/${dir}" "central_index" "apache";
-	
-	more_set_headers 'X-Debug ${handler}';
 	
 # this is a common pattern used by WordPress, Joomla, etc. and replaces the need for .htaccess rewrites
 	location @central_index {
