@@ -1,6 +1,6 @@
 /*
 nginx module for shared hosting environment
-Copyright (C) 2013  Arran Schlosberg
+Copyright (C) 2013  Oonix Pty Ltd (oonix.com.au)
 https://github.com/aschlosberg/ngx-shared-env
 
 This program is free software; you can redistribute it and/or modify
@@ -67,6 +67,13 @@ static ndk_set_var_t ngx_http_shared_env_read_file_filter = {
 	NULL
 };
 
+static ndk_set_var_t ngx_http_shared_env_handler_filter = {
+	NDK_SET_VAR_VALUE,
+	ngx_http_shared_env_handler,
+	6,
+	NULL
+};
+
 static ngx_command_t  ngx_http_shared_env_commands[] = {
 	{
 		ngx_string ("set_shared_env_directory"),
@@ -99,6 +106,14 @@ static ngx_command_t  ngx_http_shared_env_commands[] = {
 		0,
 		0,
 		&ngx_http_shared_env_read_file_filter
+	},
+	{
+		ngx_string ("set_shared_env_handler"),
+		NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_SIF_CONF|NGX_CONF_TAKE4|NGX_CONF_TAKE5|NGX_CONF_TAKE6|NGX_CONF_TAKE7,
+		ndk_set_var_multi_value,
+		0,
+		0,
+		&ngx_http_shared_env_handler_filter
 	},
 	ngx_null_command
 };
@@ -315,6 +330,52 @@ ngx_int_t ngx_http_shared_env_read_file(ngx_http_request_t *r, ngx_str_t *res, n
 	ndk_palloc_re(res->data, r->pool, res->len);
 	if(!fread(res->data, sizeof(char), res->len, fd)){}  //throws a warning if return value is ignored and won't let nginx compile
 	fclose(fd);
+
+	return NGX_OK;
+}
+
+/*
+ * Alongside the _public directory (see ngx_http_shared_env_set_owner comment) we can have flag files to indicate how to handle 404 requests.
+ * Given a list of "handles" this will return the first one such that _handlename exists in the same directory as _public and this can then be used in:
+ *
+ * try_files $uri @$handle;
+ *
+ * Note the variable named location @$ - these locations can pass on to alternate backends.
+ *
+ * If no flag files exist, the handle variable is set to 404 which expects nginx conf:
+ *
+ * location @404 {
+ * 	return 404;
+ * }
+ */
+ngx_int_t ngx_http_shared_env_handler(ngx_http_request_t *r, ngx_str_t *res, ngx_http_variable_value_t *v) {
+	ngx_http_variable_value_t *root, *handler;
+	root = v-5;
+
+	unsigned int len, baseLen = strlen(NGX_SHARED_ENV_SHARED_DIR) + root->len + 3;
+
+	int i;
+	for(i=1; i<=5; i++){
+		handler = root + i;
+		if(!handler->len){
+			break;
+		}
+		len = baseLen + handler->len;
+		char path[len];
+		snprintf(&(path[0]), len, "%s%s/_%s", NGX_SHARED_ENV_SHARED_DIR, root->data, handler->data);
+
+		if(access(path, F_OK)==0){
+			res->len = handler->len;
+			ndk_palloc_re(res->data, r->pool, res->len);
+			memcpy(res->data, handler->data, handler->len);
+			return NGX_OK;
+		}
+	}
+
+	// will only be reached if no handlers have been flagged
+	res->len = 3;
+	ndk_palloc_re(res->data, r->pool, res->len);
+	res->data = (u_char*) "404";
 
 	return NGX_OK;
 }

@@ -1,0 +1,31 @@
+# nginx module for shared hosting environment
+# Copyright (C) 2013  Oonix Pty Ltd (oonix.com.au)
+# https://github.com/aschlosberg/ngx-shared-env
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+set $fpmServerName "${www}${domain}";
+set $scriptURI "http://${www}${domain}${request_uri}";
+
+set_shared_env_fpm_port $fpmport $owner;
+
+fastcgi_intercept_errors off;
+fastcgi_pass   127.0.0.1:${fpmport};
+fastcgi_next_upstream error;
+fastcgi_index  index.php;
+fastcgi_param  SCRIPT_FILENAME  "${root}/_public${fastcgi_script_name}";
+include        fastcgi_params;
+fastcgi_param  SERVER_NAME	$fpmServerName;
+fastcgi_param  SCRIPT_URI	$scriptURI;

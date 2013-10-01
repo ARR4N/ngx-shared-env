@@ -1,0 +1,73 @@
+# nginx module for shared hosting environment
+# Copyright (C) 2013  Oonix Pty Ltd (oonix.com.au)
+# https://github.com/aschlosberg/ngx-shared-env
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+server {
+	listen   80;
+	server_name shared ~^(?<www>www\.)?(?<domain>[a-zA-Z0-9-\.]+)$;
+
+	set_shared_env_directory $dir $domain;
+	set_shared_env_owner $owner $dir;
+
+	set $root "/var/www/public/${owner}/${dir}";
+
+# Check if the domain is just an alias for another one
+# If so, do not change the owner - can only alias your own domain
+	set $alias "${root}/_alias";
+	if (-e $alias) {
+		set $www "";
+		set_shared_env_file_contents $domain $alias;
+		set_shared_env_directory $dir $domain;
+	}
+
+	set $redirect "${root}/_redirect";
+	if (-f $redirect){
+		set_shared_env_file_contents $newDomain $redirect;
+		return 301 http://${newDomain}${request_uri};
+	}
+
+	root "${root}/_public";
+
+# see location / for the use of $handler
+	set $handler "404";
+	location @404 {
+		return 404;
+	}
+	
+	set_shared_env_handler $handler "${owner}/${dir}" "central_index" "apache";
+	
+	more_set_headers 'X-Debug ${handler}';
+	
+# this is a common pattern used by WordPress, Joomla, etc. and replaces the need for .htaccess rewrites
+	location @central_index {
+		rewrite . /index.php?q=$uri&$args;
+	}
+	
+	location @apache {
+		#proxy_pass...
+	}
+
+# Note the use of variable named location @$handler
+	location / {
+		try_files $uri @$handler;
+	}
+	
+	location ~ \.php$ {
+		try_files $uri @$handler;
+		include fpm;
+	}
+}

@@ -1,6 +1,6 @@
 /*
 nginx module for shared hosting environment
-Copyright (C) 2013  Arran Schlosberg
+Copyright (C) 2013  Oonix Pty Ltd (oonix.com.au)
 https://github.com/aschlosberg/ngx-shared-env
 
 This program is free software; you can redistribute it and/or modify
@@ -34,5 +34,6 @@ ngx_int_t ngx_http_shared_env_set_dir(ngx_http_request_t *r, ngx_str_t *res, ngx
 ngx_int_t ngx_http_shared_env_set_owner(ngx_http_request_t *r, ngx_str_t *res, ngx_http_variable_value_t *v);
 ngx_int_t ngx_http_shared_env_set_fpm_port(ngx_http_request_t *r, ngx_str_t *res, ngx_http_variable_value_t *v);
 ngx_int_t ngx_http_shared_env_read_file(ngx_http_request_t *r, ngx_str_t *res, ngx_http_variable_value_t *v);
+ngx_int_t ngx_http_shared_env_handler(ngx_http_request_t *r, ngx_str_t *res, ngx_http_variable_value_t *v);
 
 void str_replace(char *str, char from, char to);
